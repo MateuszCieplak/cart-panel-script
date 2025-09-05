@@ -11,8 +11,8 @@
             return parsedCart && Array.isArray(parsedCart.products) 
                 ? parsedCart 
                 : { products: [] };
-        } catch (e) {
-            console.warn('Cart JSON was invalid, resetting.', e);
+        } catch (event) {
+            console.warn('Cart JSON was invalid, resetting.', event);
 
             return { products: [] };
         }
@@ -22,20 +22,20 @@
         localStorage.setItem('cart', JSON.stringify(cart));
     };
 
-    function addToCart(product) {
+    function addToCart(productToAdd) {
         const cart = getCart();
 
-        const indexOfProduct = cart.products.findIndex(p => p.id === product.id);
+        const indexOfProduct = cart.products.findIndex(product => product.id === productToAdd.id);
         let newProducts;
 
         if (indexOfProduct > -1) {
-            newProducts = cart.products.map((p, index) =>
+            newProducts = cart.products.map((product, index) =>
                 index === indexOfProduct
-                    ? { ...p, quantity: p.quantity + 1 }
-                    : p
+                    ? { ...product, quantity: product.quantity + 1 }
+                    : product
             );
         } else {
-            newProducts = [...cart.products, { ...product, quantity: 1 }];
+            newProducts = [...cart.products, { ...productToAdd, quantity: 1 }];
         }
 
         saveCart({products: newProducts});
@@ -51,20 +51,20 @@
 
     function extractProductInfo() {
         const elementName = document.querySelector('h1');
-        const productName = elementName ? elementName.innerHTML.trim() : 'Unknown Product';
+        const productName = elementName ? elementName.textContent.trim() : 'Unknown Product';
 
         const priceElement = document.querySelector('.price, [class*="price"]');
         let priceProduct = 0;
         let currencyProduct = '';
 
         if(priceElement) {
-            const rawPriceText = priceElement.innerText.trim()
+            const rawPriceText = priceElement.textContent.trim()
 
             priceProduct = parseFloat(rawPriceText.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
             priceProduct = Math.round(priceProduct * 100) / 100;
 
-            const currencyMatch = rawPriceText.match(/[\p{L}]+/u);
-            currencyProduct = currencyMatch ? currencyMatch.join('') : '';
+            const currencyMatch = rawPriceText.match(/[\d.,]+\s*([^\d.,\s]+)/);
+            currencyProduct = currencyMatch ? currencyMatch[1] : '';
         }
 
         const imgEl = document.querySelector('img');
@@ -99,22 +99,24 @@
         if (cart.products.length === 0) {
             panel.insertAdjacentHTML("afterbegin", '<p>Koszyk jest pusty</p>');
         } else {
-            const itemsHTML = cart.products.map(item => `
+            const itemsHTML = cart.products.map(product => `
                 <div class="cart-item">
-                    <p><span class="label">Product name:</span> <span class="value">${item.name}</span></p>
-                    <p><span class="label">Quantity:</span> <span class="value">${item.quantity}</span></p>
-                    <p><span class="label">Unit price:</span> <span class="value">${item.price.toFixed(2)} ${item.currency}</span></p>
-                    <p><span class="label">Total price:</span> <span class="value">${(item.price * item.quantity).toFixed(2)} ${item.currency}</span></p>
-                    <button data-id="${item.id}">Delete</button>
+                    <p><span class="label">Product name: </span> <span class="value"> ${product.name}</span></p>
+                    <p><span class="label">Quantity: </span> <span class="value"> ${product.quantity}</span></p>
+                    <p><span class="label">Unit price: </span> <span class="value"> ${product.price.toFixed(2)} ${product.currency}</span></p>
+                    <p><span class="label">Total price: </span> <span class="value"> ${(product.price * product.quantity).toFixed(2)} ${product.currency}</span></p>
+                    <button data-id="${product.id}">Delete</button>
                 </div>
             `).join('');
 
             const total = cart.products.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
+            const currency = cart.products.length > 0 ? cart.products[0].currency : '';
+
             panel.insertAdjacentHTML("afterbegin", `
             <h4>Cart</h4>
             ${itemsHTML}
-            <p><strong>Total Cart Price:</strong> ${total.toFixed(2)}</p>
+            <p><strong>Total Cart Price:</strong> ${total.toFixed(2)} ${currency}</p>
             `);
         }
 
@@ -134,7 +136,7 @@
     function injectStyles() {
         const style = document.createElement('style');
         
-        style.innerHTML = `
+        style.textContent = `
             .panel__cart {
                 position: fixed;
                 bottom: 10px;
@@ -166,17 +168,19 @@
 
             .cart-item p {
                 display: flex;
+                width: 100%;
                 align-items: start;
                 line-height: 120%;
+                justify-content: space-between;
             }
 
             .cart-item .label {
                 font-weight: bold;
-                display: inline-block;
-                width: 90px;
+                flex: 1;
             }
             .cart-item .value {
                 color: #333;
+                flex: 1;
             }
             .cart-item button {
                 padding: 5px;
